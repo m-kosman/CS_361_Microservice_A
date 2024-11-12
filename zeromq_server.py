@@ -20,41 +20,52 @@ class CategoryServer:
 
     def process_requests(self):
         while True:
-            # receives request from client program
-            message = self._socket.recv_json()
-            print(f"Received request: {message}")
+            try:
+                # receives request from client program
+                message = self._socket.recv_json()
+                print(f"Received request: {message}")
 
-            if "message type" == "request":
-                # send tasks to be categorized
-                response = {
-                    "message type": "response",
-                    "tasks": []
-                }
-                # sends tasks to workers
-                for task in message["tasks"]:
-                    self._push_socket.send_json(task)
+                if message["message type"] == "request":
+                    # send tasks to be categorized
+                    response = {
+                        "message type": "response",
+                        "tasks": []
+                    }
+                    # sends tasks to workers
+                    for task in message["tasks"]:
+                        self._push_socket.send_json(task)
 
-                # collects responses from workers
-                for _ in message["tasks"]:
-                    new_task = self._pull_socket.recv_json()
-                    response["tasks"].append(new_task)
-                pass
+                    # collects responses from workers
+                    for _ in message["tasks"]:
+                        new_task = self._pull_socket.recv_json()
+                        response["tasks"].append(new_task)
+                    pass
 
-            if "message type" == "feedback":
-                # process feedback
-                task = message['feedback']['task']
-                orig_category = message['feedback']['category_provided']
-                new_category = message['feedback']['category_feedback']
+                if message["message type"] == "feedback":
+                    # process feedback
+                    task = message['feedback']['task']
+                    orig_category = message['feedback']['category_provided']
+                    new_category = message['feedback']['category_feedback']
 
-                response = {"message type": "response",
-                            "message": f"Received feedback for task: {task}.  Category should be {new_category} "
-                                       f"instead of {orig_category}."
-                            }
+                    response = {"message type": "response",
+                                "message": f"Received feedback for task: {task}.  Category should be {new_category} "
+                                           f"instead of {orig_category}."
+                                }
 
-                self._socket.send_json(response)
-
+                    self._socket.send_json(response)
+            except zmq.Again as e:
+                time.sleep(0.1)
+            except zmq.ZMQError as error:
+                print(f"Error while receiving message: {error}")
+                print(f"ZMQ Error Code: {error.errno}")
+                print(f"ZMQ Error Message: {zmq.strerror(error.errno)}")
+                break
     def close(self):
         self._socket.close()
         self._push_socket.close()
         self._pull_socket.close()
         self._context.term()
+
+if __name__ == "__main__":
+    server = CategoryServer()
+    server.process_requests()
