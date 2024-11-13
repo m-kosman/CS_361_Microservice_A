@@ -1,5 +1,5 @@
 import string
-
+from datetime import datetime
 from task_category_db import TaskCategoryDatabase, Categories
 import nltk
 from nltk.corpus import stopwords
@@ -17,10 +17,12 @@ class TaskCategorization:
         self._categories = None
         self._database = TaskCategoryDatabase()
 
-
         self.get_categories()
         self._processed_task = self.preprocess_string(self._task)
         self._category = self.find_category(self._processed_task)
+
+    def get_category(self):
+        return self._category
 
     def get_categories(self):
         """initalizes dictionary of categories to store # of db matches """
@@ -55,22 +57,29 @@ class TaskCategorization:
         return lemmed_tokens
 
     def find_category(self, processed_tokens):
+        print(f"finding category {datetime.now()}")
         for key in self._categories:
             # gets the keywords
             cat_id = self._database.get_category_id(key)
             keywords = self._database.get_all_keywords_for_category(cat_id)
 
-            # preprocesses the keywords
-            processed_keywords = []
-            for keyword in keywords:
-                result = self.preprocess_string(keyword)
-                processed_keywords.extend(result)
+            # # preprocesses the keywords
+            # processed_keywords = []
+            # for keyword in keywords:
+            #     result = self.preprocess_string(keyword)
+            #     processed_keywords.extend(result)
 
             # checks for any matches
             matches = 0
-            for keyword in processed_keywords:
-                if keyword in processed_tokens:
-                    matches += 1
+
+            keyword_set = set(keywords)
+            matches += len(set(processed_tokens) & keyword_set)
+
+            for keyword in keywords:
+                for token in processed_tokens:
+                    if keyword in processed_tokens:
+                        matches += 1
+                        break
 
             self._categories[key] = matches
         # gets key with max value
@@ -82,21 +91,22 @@ class TaskCategorization:
 
         print(self._categories)
         print(category)
+        print(f"returning category {datetime.now()}")
         return category
 
 
-task1 = 'Complete homework assignment'
-task2 = 'Prepare presentation slides'
-task3 = 'Grocery shopping for the week'
-task4 = 'Attend team meeting at 3 PM'
-task5 = 'Write blog post for the website'
-task6 = 'Call the doctor for an appointment'
-task7 = 'Clean and organize the workspace'
-task8 = 'Respond to work emails'
-task9 = 'Pick up dry cleaning'
-task10 = 'Walk the dog in the evening'
-
-categorizer = TaskCategorization(1, task7)
+# task1 = 'Complete homework assignment'
+# task2 = 'Prepare presentation slides'
+# task3 = 'Grocery shopping for the week'
+# task4 = 'Attend team meeting at 3 PM'
+# task5 = 'Write blog post for the website'
+# task6 = 'Call the doctor for an appointment'
+# task7 = 'Clean and organize the workspace'
+# task8 = 'Respond to work emails'
+# task9 = 'Pick up dry cleaning'
+# task10 = 'Walk the dog in the evening'
+#
+# categorizer = TaskCategorization(1, task7)
 
 
 
