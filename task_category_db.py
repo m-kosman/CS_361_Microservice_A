@@ -102,29 +102,53 @@ class TaskCategoryDatabase:
                     session.add(Category(name=category.value))
 
     def add_keywords_to_category(self, category_id, keywords):
-        # used to preadd the keywords to the database
+        # preadd the keywords to the database
         with self.session_scope() as session:
             try:
-                # Loop through the list of keywords
+                # loop over list of keywords
                 for keyword_name in keywords:
-                    # Check if the keyword already exists
+                    # check for duplicates
                     keyword = session.query(Keyword).filter_by(keyword_name=keyword_name).first()
 
                     if not keyword:
-                        # If the keyword does not exist, create it
+                        # create keyword if it does not exist
                         keyword = Keyword(keyword_name=keyword_name)
                         session.add(keyword)
-                        session.commit()  # Commit the transaction to get the new keyword's ID
+                        session.commit()
 
-                    # Now add the keyword to the junction table to associate it with the category
+                    # add keyword/category link to junction table
                     category_keyword = CategoryKeyword(category_id=category_id, keyword_id=keyword.id)
                     session.add(category_keyword)
 
-
-                # Commit all changes in the session (adding keywords and updating the junction table)
                 session.commit()
             except Exception as e:
                 session.rollback()
+
+    def get_category_id(self, display_name):
+        with self.session_scope() as session:
+            try:
+                category_instance = session.query(Category).filter_by(name=display_name).first()
+                if category_instance:
+                    return category_instance.id
+                else:
+                    return None  # no category found
+            except Exception as e:
+                session.rollback()
+                return
+
+    def get_all_keywords_for_category(self, category_id):
+        with self.session_scope() as session:
+            try:
+                keywords = session.query(Keyword.keyword_name).join(CategoryKeyword).filter(
+                        CategoryKeyword.category_id == category_id).all()
+                if keywords:
+                    keyword_list = [keyword[0] for keyword in keywords]
+                    return keyword_list
+                return None
+            except Exception as e:
+                session.rollback()
+                return
+
 
 
 if __name__ == "__main__":
