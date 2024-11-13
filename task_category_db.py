@@ -159,14 +159,35 @@ class TaskCategoryDatabase:
                 session.rollback()
                 return
 
+    def add_keyword_category(self, category, task):
+        # used to add keywords based on feedback from user
+        with self.session_scope() as session:
+            try:
+                # gets the category id
+                category_id = self.get_category_id(category)
+
+                # checks for duplicate
+                keyword = session.query(Keyword).filter_by(keyword_name=task).first()
+
+                if not keyword:
+                    # create keyword if it does not exist
+                    keyword = Keyword(keyword_name=task)
+                    session.add(keyword)
+                    session.commit()
+
+                # add keyword/category link to junction table
+                category_keyword = CategoryKeyword(category_id=category_id, keyword_id=keyword.id)
+                session.add(category_keyword)
+                session.commit()
+                return True
+            except Exception as e:
+                session.rollback()
+                return False
 
 
 if __name__ == "__main__":
     database = TaskCategoryDatabase()
 
-
-    #
-    # database.add_keywords_to_category(5, personal_tasks)
 
 
 
