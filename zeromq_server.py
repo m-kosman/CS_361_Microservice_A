@@ -4,9 +4,11 @@ import zmq
 import json
 import signal
 import sys
+from task_category_db import TaskCategoryDatabase
 
 class CategoryServer:
     def __init__(self, host="localhost", port=8888):
+        self._database = TaskCategoryDatabase()
         self._context = zmq.Context()
         # for connection with client program
         # self._socket = self._context.socket(zmq.REP)
@@ -39,8 +41,9 @@ class CategoryServer:
                 message = self._frontend.recv_multipart()
                 print(f"sending message: {message}")
                 client_id, message, request = self.partition_message(message)
-                num_tasks = len(message["tasks"])
+
                 if request:
+                    num_tasks = len(message["tasks"])
                     self.distribute_tasks(client_id, message)
                     response = self.get_responses(num_tasks)
                     print(response)
@@ -48,7 +51,10 @@ class CategoryServer:
                     print(f"sending response: {multipart_msg} ")
                     self._frontend.send_multipart(multipart_msg)
                 else:
-                    self.process_feedback()
+                    response = self.process_feedback(message)
+                    if response:
+                        multipart_msg = [client_id, b'', json.dumps(response).encode()]
+                        self._frontend.send_multipart(multipart_msg)
 
 
             # try:
@@ -137,10 +143,13 @@ class CategoryServer:
         del message["message type"]  # removes the message type
         tasks = message["tasks"]    # flattens remaining
 
-        for task in tasks:
-            json_task = json.dumps(task).encode('utf-8')
-            print(f"sending tasks to worker {datetime.now()}")
+        task_no = 0
+
+        while task_no < len(tasks):
+            json_task = json.dumps(tasks[task_no]).encode('utf-8')
+            print(f"sending task {tasks[task_no]} to worker {datetime.now()}")
             self._backend.send_multipart([client_id, json_task])
+            task_no += 1
 
     def get_responses(self, total):
         sockets = dict(self._poller.poll())
@@ -162,13 +171,25 @@ class CategoryServer:
         return response
 
 
-    def process_feedback(self):
-        pass
+    def process_feedback(self, message):
+        task = message['feedback']['task']
+        orig_category = message['feedback']['category_provided']
+        new_category = message['feedback']['category_feedback']
+
+        response = {"message type": "response",
+                        "message": f"Received feedback for task: {task}.  Category should be {new_category} "
+                                   f"instead of {orig_category}."
+                        }
+
+        result = self._database.add_keyword_category(new_category, task)
+        if result:
+            return response
+        return
 
     def close(self, signalnum, frame):
         self._frontend.close()
         self._backend.close()
-        self._rep_socket.close()
+        # self._rep_socket.close()
         self._context.term()
         print("Server Closed")
 

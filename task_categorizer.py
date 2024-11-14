@@ -16,6 +16,7 @@ class TaskCategorization:
         self._task = task
         self._categories = None
         self._database = TaskCategoryDatabase()
+        print(self._database)
 
         self.get_categories()
         self._processed_task = self.preprocess_string(self._task)

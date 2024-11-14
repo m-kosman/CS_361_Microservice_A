@@ -76,9 +76,12 @@ class CategoryWorker:
 
 
     def close(self, signalnum, frame):
-        self._rep_socket.close()
+        # self._rep_socket.close()
         self._deal_socket.close()
         self._context.term()
         print("Workers closed")
 
 
+if __name__ == "__main__":
+    worker = CategoryWorker(host="localhost", port=8889)
+    worker.process_tasks()
