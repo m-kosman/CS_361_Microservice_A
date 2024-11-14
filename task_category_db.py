@@ -1,8 +1,8 @@
 import enum
 import json
-from sqlalchemy import create_engine, Column, Integer, String, ForeignKey, Numeric
+from sqlalchemy import create_engine, Integer, String, ForeignKey
 from sqlalchemy import Enum as SQLAEnum
-from sqlalchemy.orm import declarative_base, sessionmaker, relationship, backref, Mapped, mapped_column
+from sqlalchemy.orm import declarative_base, sessionmaker, relationship, Mapped, mapped_column
 from contextlib import contextmanager
 from typing import Union
 
@@ -70,81 +70,145 @@ class CategoryKeyword(Base):
 # DATABASE_URL = 'postgresql+psycopg://mkosman:8TdpE59JVFM@localhost:5432/task_category'
 # engine = create_engine(DATABASE_URL, pool_pre_ping=True)
 engine = create_engine('sqlite+pysqlite:///task_category.db')
-Base.metadata.create_all(bind=engine)
+Base.metadata.create_all(bind=engine, checkfirst=True)
 Session = sessionmaker(bind=engine, expire_on_commit=False)
 
+def add_categories():
+    """Pre-adds the enumerated categories to the Unit table"""
+    session = Session()
+    try:
+        for category in Categories:
+            if not session.query(Category).filter_by(name=category.value).first():
+                session.add(Category(name=category.value))
+        session.commit()
+    except Exception as e:
+        session.rollback()
+
+def add_starter_data(json_file):
+    # preadd the keywords to the database
+    with open(json_file, "r") as file:
+        categories = json.load(file)
+    print("adding json starter tasks ")
+    session = Session()
+    try:
+        # get category id
+        for category_name, keywords in categories.items():
+            category_id = get_category_id(category_name)
+            # loop over list of keywords
+            for keyword_name in keywords:
+                # check for duplicates
+                keyword = session.query(Keyword).filter_by(keyword_name=keyword_name).first()
+
+                if not keyword:
+                    # create keyword if it does not exist
+                    keyword = Keyword(keyword_name=keyword_name)
+                    session.add(keyword)
+                    session.flush()
+
+                # add keyword/category link to junction table
+                category_keyword = CategoryKeyword(category_id=category_id, keyword_id=keyword.id)
+                session.add(category_keyword)
+
+        session.commit()
+    except Exception as e:
+        session.rollback()
+        return
+
+def get_category_id(display_name):
+    session = Session()
+    try:
+        category_instance = session.query(Category).filter_by(name=display_name).first()
+        if category_instance:
+            return category_instance.id
+        else:
+            return None
+    except Exception as e:
+        session.rollback()
+        print(f"Error retrieving category: {e}")
+        return None
 
 class TaskCategoryDatabase:
-    _instance = None
-
-    def __new__(cls):
-        if cls._instance is None:
-            cls._instance = super(TaskCategoryDatabase, cls).__new__(cls)
-            cls._instance.add_categories()
-            cls._instance.add_keywords_to_category("starter_tasks.json")
-        return cls._instance
+    # _instance = None
+    # # _initialized = False
+    #
+    # def __new__(cls):
+    #     if cls._instance is None:
+    #         cls._instance = super(TaskCategoryDatabase, cls).__new__(cls)
+    #         # if not cls._initialized:
+    #         #     cls._instance.add_categories()
+    #         #     cls._instance.add_keywords_to_category("starter_tasks.json")
+    #         #     cls._initialized = True
+    #     return cls._instance
+    def __init__(self):
+        self.session = Session()
 
     @contextmanager
     def session_scope(self):
         """Manaages the dtabase sessions"""
-        session = Session()
+        # session = Session()
         try:
-            yield session
-            session.commit()
+            yield self.session
+            self.session.commit()
         except Exception:
-            session.rollback()
+            self.session.rollback()
             raise
         finally:
-            session.close()
+            self.session.close()
 
-    def add_categories(self):
-        """Pre-adds the enumerated categories to the Unit table"""
-        with self.session_scope() as session:
-            for category in Categories:
-                if not session.query(Category).filter_by(name=category.value).first():
-                    session.add(Category(name=category.value))
+    # @classmethod
+    # def get_instance(cls):
+    #     """et the singleton instance of database."""
+    #     return cls._instance
 
-    def add_keywords_to_category(self, json_file):
-        # preadd the keywords to the database
-        with open(json_file, "r") as file:
-            categories = json.load(file)
-
-        with self.session_scope() as session:
-            try:
-                # get category id
-                for category_name, keywords in categories.items():
-                    category_id = self.get_category_id(category_name)
-                    # loop over list of keywords
-                    for keyword_name in keywords:
-                        # check for duplicates
-                        keyword = session.query(Keyword).filter_by(keyword_name=keyword_name).first()
-
-                        if not keyword:
-                            # create keyword if it does not exist
-                            keyword = Keyword(keyword_name=keyword_name)
-                            session.add(keyword)
-                            session.commit()
-
-                        # add keyword/category link to junction table
-                        category_keyword = CategoryKeyword(category_id=category_id, keyword_id=keyword.id)
-                        session.add(category_keyword)
-
-                session.commit()
-            except Exception as e:
-                session.rollback()
-                return
+    # def add_categories(self):
+    #     """Pre-adds the enumerated categories to the Unit table"""
+    #     with self.session_scope() as session:
+    #         for category in Categories:
+    #             if not session.query(Category).filter_by(name=category.value).first():
+    #                 session.add(Category(name=category.value))
+    #
+    # def add_keywords_to_category(self, json_file):
+    #     # preadd the keywords to the database
+    #     with open(json_file, "r") as file:
+    #         categories = json.load(file)
+    #     print("adding json starter tasks ")
+    #     with self.session_scope() as session:
+    #         try:
+    #             # get category id
+    #             for category_name, keywords in categories.items():
+    #                 category_id = self.get_category_id(category_name)
+    #                 # loop over list of keywords
+    #                 for keyword_name in keywords:
+    #                     # check for duplicates
+    #                     keyword = session.query(Keyword).filter_by(keyword_name=keyword_name).first()
+    #
+    #                     if not keyword:
+    #                         # create keyword if it does not exist
+    #                         keyword = Keyword(keyword_name=keyword_name)
+    #                         session.add(keyword)
+    #                         session.flush()
+    #
+    #                     # add keyword/category link to junction table
+    #                     category_keyword = CategoryKeyword(category_id=category_id, keyword_id=keyword.id)
+    #                     session.add(category_keyword)
+    #
+    #             session.commit()
+    #         except Exception as e:
+    #             session.rollback()
+    #             return
 
     def get_category_id(self, display_name):
-        with self.session_scope() as session:
-            try:
-                category_instance = session.query(Category).filter_by(name=display_name).first()
-                if category_instance:
-                    return category_instance.id
-                else:
-                    return None  # no category found
-            except Exception as e:
-                session.rollback()
-                return
+        return get_category_id(display_name)
+        # with self.session_scope() as session:
+        #     try:
+        #         category_instance = session.query(Category).filter_by(name=display_name).first()
+        #         if category_instance:
+        #             return category_instance.id
+        #         else:
+        #             return None  # no category found
+        #     except Exception as e:
+        #         session.rollback()
+        #         return
 
     def get_all_keywords_for_category(self, category_id):
         with self.session_scope() as session:
@@ -173,7 +237,7 @@ class TaskCategoryDatabase:
                     # create keyword if it does not exist
                     keyword = Keyword(keyword_name=task)
                     session.add(keyword)
-                    session.commit()
+                    session.flush()
 
                 # add keyword/category link to junction table
                 category_keyword = CategoryKeyword(category_id=category_id, keyword_id=keyword.id)
@@ -184,10 +248,10 @@ class TaskCategoryDatabase:
                 session.rollback()
                 return False
 
-
 if __name__ == "__main__":
-    database = TaskCategoryDatabase()
-
+    add_categories()
+    add_starter_data('starter_tasks.json')
+    # db = TaskCategoryDatabase()
 
 
 
