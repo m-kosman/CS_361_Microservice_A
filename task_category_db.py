@@ -23,7 +23,9 @@ class Categories(enum.Enum):
                 return category
         return None
 
+
 Base = declarative_base()
+
 
 class Category(Base):
     """Represents a task category"""
@@ -67,11 +69,10 @@ class CategoryKeyword(Base):
 
 
 # set up database engine
-# DATABASE_URL = 'postgresql+psycopg://mkosman:8TdpE59JVFM@localhost:5432/task_category'
-# engine = create_engine(DATABASE_URL, pool_pre_ping=True)
 engine = create_engine('sqlite+pysqlite:///task_category.db')
 Base.metadata.create_all(bind=engine, checkfirst=True)
 Session = sessionmaker(bind=engine, expire_on_commit=False)
+
 
 def add_categories():
     """Pre-adds the enumerated categories to the Unit table"""
@@ -84,11 +85,11 @@ def add_categories():
     except Exception as e:
         session.rollback()
 
+
 def add_starter_data(json_file):
-    # preadd the keywords to the database
+    """Pre-adds the starter keywords to the database """
     with open(json_file, "r") as file:
         categories = json.load(file)
-    print("adding json starter tasks ")
     session = Session()
     try:
         # get category id
@@ -114,10 +115,14 @@ def add_starter_data(json_file):
         session.rollback()
         return
 
-def get_category_id(display_name):
+
+def get_category_id(display_name:str) -> int:
+    """Helper method to get a category id from the display name of the enumerated category"""
     session = Session()
+    # looks up category from the display name
     try:
         category_instance = session.query(Category).filter_by(name=display_name).first()
+        # returns the id
         if category_instance:
             return category_instance.id
         else:
@@ -127,25 +132,15 @@ def get_category_id(display_name):
         print(f"Error retrieving category: {e}")
         return None
 
+
 class TaskCategoryDatabase:
-    # _instance = None
-    # # _initialized = False
-    #
-    # def __new__(cls):
-    #     if cls._instance is None:
-    #         cls._instance = super(TaskCategoryDatabase, cls).__new__(cls)
-    #         # if not cls._initialized:
-    #         #     cls._instance.add_categories()
-    #         #     cls._instance.add_keywords_to_category("starter_tasks.json")
-    #         #     cls._initialized = True
-    #     return cls._instance
+
     def __init__(self):
         self.session = Session()
 
     @contextmanager
     def session_scope(self):
-        """Manaages the dtabase sessions"""
-        # session = Session()
+        """Manages the database sessions"""
         try:
             yield self.session
             self.session.commit()
@@ -155,66 +150,22 @@ class TaskCategoryDatabase:
         finally:
             self.session.close()
 
-    # @classmethod
-    # def get_instance(cls):
-    #     """et the singleton instance of database."""
-    #     return cls._instance
-
-    # def add_categories(self):
-    #     """Pre-adds the enumerated categories to the Unit table"""
-    #     with self.session_scope() as session:
-    #         for category in Categories:
-    #             if not session.query(Category).filter_by(name=category.value).first():
-    #                 session.add(Category(name=category.value))
-    #
-    # def add_keywords_to_category(self, json_file):
-    #     # preadd the keywords to the database
-    #     with open(json_file, "r") as file:
-    #         categories = json.load(file)
-    #     print("adding json starter tasks ")
-    #     with self.session_scope() as session:
-    #         try:
-    #             # get category id
-    #             for category_name, keywords in categories.items():
-    #                 category_id = self.get_category_id(category_name)
-    #                 # loop over list of keywords
-    #                 for keyword_name in keywords:
-    #                     # check for duplicates
-    #                     keyword = session.query(Keyword).filter_by(keyword_name=keyword_name).first()
-    #
-    #                     if not keyword:
-    #                         # create keyword if it does not exist
-    #                         keyword = Keyword(keyword_name=keyword_name)
-    #                         session.add(keyword)
-    #                         session.flush()
-    #
-    #                     # add keyword/category link to junction table
-    #                     category_keyword = CategoryKeyword(category_id=category_id, keyword_id=keyword.id)
-    #                     session.add(category_keyword)
-    #
-    #             session.commit()
-    #         except Exception as e:
-    #             session.rollback()
-    #             return
-
-    def get_category_id(self, display_name):
+    def get_category_id(self, display_name: str) -> int:
+        """returns the category id"""
         return get_category_id(display_name)
-        # with self.session_scope() as session:
-        #     try:
-        #         category_instance = session.query(Category).filter_by(name=display_name).first()
-        #         if category_instance:
-        #             return category_instance.id
-        #         else:
-        #             return None  # no category found
-        #     except Exception as e:
-        #         session.rollback()
-        #         return
 
-    def get_all_keywords_for_category(self, category_id):
+    def get_all_keywords_for_category(self, category_id:int) -> Union[list, None]:
+        """
+        Receives a category id and returns a list of all the keywords linked to the category.
+        :param category_id: category database id
+        :return: List of all keywords linked to category
+        """
         with self.session_scope() as session:
             try:
+                # gets all the keyword instances
                 keywords = session.query(Keyword.keyword_name).join(CategoryKeyword).filter(
                         CategoryKeyword.category_id == category_id).all()
+                # if any keywords are found it adds it to a list and returns it
                 if keywords:
                     keyword_list = [keyword[0] for keyword in keywords]
                     return keyword_list
@@ -223,8 +174,13 @@ class TaskCategoryDatabase:
                 session.rollback()
                 return
 
-    def add_keyword_category(self, category, task):
-        # used to add keywords based on feedback from user
+    def add_keyword_category(self, category:str, task:str) -> bool:
+        """
+        Adds keywords to database with corrected category based on user feedback.
+        :param category: category name
+        :param task: task to be added
+        :return: True if added otherwise False
+        """
         with self.session_scope() as session:
             try:
                 # gets the category id
@@ -248,14 +204,8 @@ class TaskCategoryDatabase:
                 session.rollback()
                 return False
 
+
 if __name__ == "__main__":
+    # initializes database
     add_categories()
     add_starter_data('starter_tasks.json')
-    # db = TaskCategoryDatabase()
-
-
-
-
-
-
-
