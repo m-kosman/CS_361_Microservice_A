@@ -185,7 +185,7 @@ class TaskCategoryDatabase:
             try:
                 # gets the category id
                 category_id = self.get_category_id(category)
-
+                task = task.lower()
                 # checks for duplicate
                 keyword = session.query(Keyword).filter_by(keyword_name=task).first()
 
