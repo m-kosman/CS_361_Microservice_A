@@ -4,7 +4,8 @@
 # database is a local persistent SQL database. 
 
 # Prior to running, you must first set up the database.  To do this, run task_category_db.py 
-# and the database should be prefilled with the categories and keywords. 
+# and the database should be prefilled with the categories and keywords. New keywords are 
+# only added based on user feedback. 
 
 # This program uses a request reply broker model for communication.  
 
