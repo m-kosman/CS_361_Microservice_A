@@ -151,6 +151,7 @@ class CategoryServer:
         # calls database to add the keyword/category link
         result = self._database.add_keyword_category(new_category, task)
         if result:
+            print(f"Sending response: {response}")
             return response
         return
 
