@@ -113,3 +113,5 @@ Tasks may be in mixed case, but the categories should be lowercase.
 - Task IDs should be strings
 - If you want to add more keywords, you can either use a SQL query or send a feedback request.
 
+# UML Diagram
+![UML Diagram](UML diagram.png)
