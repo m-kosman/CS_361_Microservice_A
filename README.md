@@ -115,3 +115,4 @@ Tasks may be in mixed case, but the categories should be lowercase.
 
 # UML Diagram
 ![UML diagram.png](https://github.com/m-kosman/CS_361_Microservice_A/blob/master/UML%20diagram.png))
+
