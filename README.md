@@ -114,4 +114,4 @@ Tasks may be in mixed case, but the categories should be lowercase.
 - If you want to add more keywords, you can either use a SQL query or send a feedback request.
 
 # UML Diagram
-![UML Diagram](UML diagram.png)
+![UML diagram.png](https://github.com/m-kosman/CS_361_Microservice_A/blob/master/UML%20diagram.png))
